@@ -61,7 +61,15 @@ def main(config: Dict) -> None:
         best_x, best_cost, x_history, cost_history, individuals = search_algorithms.ga(cost_function=cost_function, population_size=config['ga']['population_size'], max_itr=config['ga']['max_itr'],
                                                                                        mutation_rate=config['ga']['mutation_rate'], crossover_rate=config['ga']['crossover_rate'], x_initial=config['x_initial'],
                                                                                        x_range=x_range)
-
+    
+    elif config['search_algorithm'] == 'variable_neighborhood_search':
+        best_x, best_cost, x_history, cost_history = search_algorithms.vns(cost_function=cost_function, max_itr_vns=config['variable_neighborhood_search']['max_itr_vns'], max_itr_ls=config['variable_neighborhood_search']['max_itr_ls'], 
+                                                                           convergence_threshold=config['variable_neighborhood_search']['convergence_threshold'], k_max=config['variable_neighborhood_search']['k_max'],x_initial=config['x_initial'],
+                                                                            x_range=x_range)
+    elif config['search_algorithm'] == 'generalized_neighborhood_search':
+        best_x, best_cost, x_history, cost_history = search_algorithms.gns(cost_function=cost_function, max_itr_vns=config['generalized_neighborhood_search']['max_itr_vns'], max_itr_ls=config['generalized_neighborhood_search']['max_itr_ls'], convergence_threshold=config['generalized_neighborhood_search']['convergence_threshold'], 
+                                                                            k_max=config['generalized_neighborhood_search']['k_max'], layers=config['generalized_neighborhood_search']['layers'], x_initial=config['x_initial'], x_range=x_range)
+    
     if len(best_x) == 2: 
         # If the dimensionality is 2, visualize the results.
         plot_utils.plot_results(best_x=best_x, best_cost=best_cost,
@@ -74,6 +82,11 @@ def main(config: Dict) -> None:
         if config['cost_function'] == 'revenue':
             print(f"Cost of trucks: {best_x[0]}")
             print(f"Cost of sedans: {best_x[1]}")
+
+        if (config['search_algorithm'] == 'variable_neighborhood_search' or config['search_algorithm'] == 'generalized_neighborhood_search') and config['cost_function'] == 'schwefel':
+            print(f"best_x: {best_x}")
+            print(f"best_cost: {best_cost}")
+
 
 if __name__ == '__main__':
     with open('./config/config.yaml', 'r') as f:

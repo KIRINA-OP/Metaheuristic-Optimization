@@ -323,6 +323,84 @@ def ga(cost_function: Callable, population_size: int, max_itr: int, mutation_rat
     return best_solution, best_cost, history['best_solutions'], history['best_costs'], chromosomes
 
 ##############################################################################################################
+############ variable neighbourhood search ###################################################################
+##############################################################################################################
+def vns(cost_function: Callable, max_itr_vns: int, max_itr_ls: int, convergence_threshold: float, 
+                k_max: int, x_initial: Optional[np.array] = None, x_range: Optional[List[List[float]]] = None):
+    #generate neighborhoods,
+    k = 0
+    if x_initial is None:
+        x_initial = [random.uniform(x_range[i][0], x_range[i][1]) for i in range(len(x_range))]
+
+    best_x = x_initial
+    best_cost = cost_function(best_x)
+    x_history = [best_x]
+    cost_history = [best_cost]
+
+    # Create a tqdm progress bar
+    total_max_itr = k_max * max_itr_vns
+    #local search neighborhood 1
+    itr_count = 0
+
+    # progress_bar = tqdm(total=total_max_itr, desc='itr')
+
+    while k < k_max and itr_count <= total_max_itr:
+        bound = []
+        upper_bound = [x_range[x][1] - (x_range[x][1]-x_range[x][0])/k_max*(k_max-k-1) for x in range(len(x_range))]
+        lower_bound = [x_range[x][0] + (x_range[x][1]-x_range[x][0])/k_max*(k) for x in range(len(x_range))]
+        for i in range(len(x_range)):
+            bound.append([lower_bound[i], upper_bound[i]])
+
+        #generate a x_initial value in this neighborhood
+        x_current = [random.uniform(bound[i][0], bound[i][1]) for i in range(len(x_range))]
+        #perform local search
+        x_current, cost_current, _, _ = local_search(cost_function=cost_function, max_itr=max_itr_ls, convergence_threshold=convergence_threshold,
+                                               x_initial=x_current, x_range=bound)
+        
+        x_history.append(x_current)
+        cost_history.append(cost_current)
+        if(best_cost > cost_current):
+            k = 0
+            best_x = x_current
+            best_cost = cost_current
+        else:
+            k += 1
+        itr_count += 1
+        print(itr_count)
+        # progress_bar.update(1)
+    # progress_bar.close()
+    return best_x, best_cost, x_history, cost_history
+
+
+def gns(cost_function: Callable, max_itr_vns: int, max_itr_ls: int, convergence_threshold: float, 
+                k_max: int, layers: int, x_initial: Optional[np.array] = None, x_range: Optional[List[List[float]]] = None):
+    #find x* for central point with ils
+    max_itr_ils = 200
+    #    return best_x, best_cost, x_history, cost_history
+    x_initial, best_cost, _, _= iterative_local_search(cost_function=cost_function, max_itr_ils=max_itr_ils, max_itr_ls=max_itr_ls,
+                                        convergence_threshold=convergence_threshold, x_initial = None, x_range=x_range)
+    best_x = x_initial
+    #generate all layers centered at x*
+    layer_set = generate_layers(layers, x_star=x_initial, x_range=x_range)
+    x_history = []
+    cost_history = []
+    progress_bar = tqdm(total=layers, desc='layers')
+
+    for layer_range in layer_set:
+        x_current, cost_current, x_his, cost_his = vns(cost_function = cost_function, max_itr_vns = max_itr_vns, max_itr_ls = max_itr_ls, convergence_threshold = convergence_threshold, 
+                                                        k_max = k_max, x_initial = x_initial, x_range = layer_range)
+        if cost_current < best_cost:
+            best_x = x_current
+            best_cost = cost_current
+
+        for i in range(0, len(x_his)):
+            x_history.append(x_his[i])
+            cost_history.append(cost_his[i])
+        progress_bar.update(1)
+    
+    progress_bar.close()
+    return best_x, best_cost, x_history, cost_history
+##############################################################################################################
 ############ Helper Functions ################################################################################
 ##############################################################################################################
 def bound_solution_in_x_range(x: List[float], x_range: List[List[float]]) -> List[float]:
@@ -332,3 +410,15 @@ def bound_solution_in_x_range(x: List[float], x_range: List[List[float]]) -> Lis
         elif x[j] > x_range[j][1]:
             x[j] = x_range[j][1]
     return x
+
+
+def generate_layers(layers: int, x_star: Optional[np.array] = None , x_range: Optional[List[List[float]]] = None):
+    layer_set = []
+    for i in range(0, layers):
+        upper_bound = [x_range[x][1]-(x_range[x][1]-x_star[x])*i/layers for x in range(len(x_range))]
+        lower_bound = [x_range[x][0]+(x_star[x]-x_range[x][0])*i/layers for x in range(len(x_range))]
+        bound = []
+        for j in range(len(x_range)):
+            bound.append([lower_bound[j], upper_bound[j]])
+        layer_set.append(bound)
+    return layer_set
