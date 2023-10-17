@@ -372,6 +372,9 @@ def vns(cost_function: Callable, max_itr_vns: int, max_itr_ls: int, convergence_
     return best_x, best_cost, x_history, cost_history
 
 
+##############################################################################################################
+############ generalized neighbourhood search ###################################################################
+##############################################################################################################
 def gns(cost_function: Callable, max_itr_vns: int, max_itr_ls: int, convergence_threshold: float, 
                 k_max: int, layers: int, x_initial: Optional[np.array] = None, x_range: Optional[List[List[float]]] = None):
     #find x* for central point with ils
